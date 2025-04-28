@@ -134,6 +134,9 @@ scraper_cache/                   # Cache directory
 - Ensure a valid OpenAI API key.
 - Potential extensions: PDF export, LangChain pipeline, vector store ingestion.
 
+- **Note:** Due to the dynamic nature and limited static text on the Huggingface.co homepage, the scraper retrieved only minimal information, which resulted in a limited AI-generated summary. This behavior reflects a realistic limitation of scraping dynamic websites without interaction-based extraction.
+
+
 ---
 
 ## 🙏 Thanks

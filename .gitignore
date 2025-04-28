@@ -1,7 +1,6 @@
 # Ignore Jupyter checkpoints and cache
-*.ipynb_checkpoints
-notebooks/
-scraper_cache/
+.ipynb_checkpoints/
+notebooks/scraper_cache/
 
 # Ignore Python bytecode
 __pycache__/

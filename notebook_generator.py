@@ -1,72 +1,79 @@
-# notebook_generator.py
-
-import nbformat
-from nbformat.v4 import new_notebook, new_code_cell, new_markdown_cell
-from datetime import datetime
+import sys
 import os
-from urllib.parse import urlparse
+import nbformat
+from nbformat.v4 import new_notebook, new_markdown_cell
+import asyncio
+from dotenv import load_dotenv
+import logging
+
+# Učitavanje .env varijabli
+load_dotenv()
+
+# Postavljanje logginga
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+# Dodavanje direktorija projekta u sys.path
+project_dir = os.path.join(
+    "/home/lakov/projects/llm_engineering",
+    "community-contributions/playwright-bojan"
+)
+if project_dir not in sys.path:
+    sys.path.insert(0, project_dir)
+
+# Uvoz analyze_content iz playwright_ai_scraper.py
+try:
+    from playwright_ai_scraper import analyze_content
+except ModuleNotFoundError as e:
+    logging.error(f"Error importing module: {e}")
+    sys.exit(1)
+
+# Funkcija za spremanje notebooka
 
 
-def create_notebook_with_analysis(url: str, output_dir="/home/lakov/projects/llm_engineering/community-contributions/playwright-bojan/notebooks"):
-    nb = new_notebook()
-
-    # Cell 1: Markdown intro
-    intro_lines = [
-        "# ✅ Playwright Scraper Showcase (Auto-Generated)",
-        "",
-        "This notebook demonstrates asynchronous scraping and",
-        "summarization of:",
-        "",
-        f"**URL:** `{url}`"
-    ]
-    nb.cells.append(new_markdown_cell("\n".join(intro_lines)))
-
-    # Cell 2: Setup and imports (PEP8 compliant)
-    code_imports_lines = [
-        "from pathlib import Path",
-        "import os",
-        "import importlib",
-        "import asyncio",
-        "import nest_asyncio",
-        "",
-        "nest_asyncio.apply()",
-        "",
-        "# Add scraper module path",
-        "scraper_path = Path(\"/home/lakov/projects/llm_engineering/\") / \"community-contributions/playwright-bojan\"",
-        "if str(scraper_path) not in sys.path:",
-        "    import sys",
-        "    sys.path.insert(0, str(scraper_path))",
-        "",
-        "# Clear cache if needed",
-        "if 'openai_scraper_playwright' in sys.modules:",
-        "    del sys.modules['openai_scraper_playwright']",
-        "",
-        "from openai_scraper_playwright import analyze_content"
-    ]
-    nb.cells.append(new_code_cell("\n".join(code_imports_lines)))
-
-    # Cell 3: Run analysis and show markdown output
-    analysis_lines = [
-        f"result = await analyze_content(url=\"{url}\")",
-        "from IPython.display import Markdown, display",
-        "display(Markdown(result))"
-    ]
-    nb.cells.append(new_code_cell("\n".join(analysis_lines)))
-
-    # Determine file name based on domain name
-    domain = urlparse(url).netloc.split(".")[0].capitalize()
-    filename = f"Playwright_Summary_{domain}.ipynb"
-
-    # Save notebook
+def save_notebook(url, content):
+    output_dir = os.path.join(project_dir, "notebooks")
     os.makedirs(output_dir, exist_ok=True)
+
+    # Izvlačenje domene iz URL-a
+    domain = url.split("//")[-1].split("/")[0].replace(".", "_")
+    filename = f"{domain}_Summary.ipynb"
     path = os.path.join(output_dir, filename)
 
-    with open(path, "w", encoding="utf-8") as f:
+    nb = new_notebook()
+    intro = f"""
+# Summary for {url}
+
+This notebook contains an AI-generated summary of the website content.
+
+**URL**: `{url}`
+
+---
+**Analysis**:
+{content}
+"""
+    nb.cells.append(new_markdown_cell(intro))
+
+    with open(path, 'w', encoding='utf-8') as f:
         nbformat.write(nb, f)
 
-    print(f"Notebook saved to: {path}")
+    logging.info(f"Notebook saved to: {path}")
+    return path
 
+# Glavna funkcija
+
+
+async def main():
+    url = input("Enter URL to scrape: ")
+    try:
+        result = await analyze_content(url, headless=True)
+        save_notebook(url, result)
+        print(f"Summary for {url}:\n{result}")
+    except Exception as e:
+        logging.error(f"Failed to process {url}: {e}")
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
-    test_url = input("Enter URL to scrape: ")
-    create_notebook_with_analysis(test_url)
+    asyncio.run(main())
